@@ -7,13 +7,15 @@
 #include <ostream>
 #include <new>
 
-namespace ffi {
+namespace ffi
+{
 
-extern "C" {
+    extern "C"
+    {
 
-void inc(int a, void (*cb)(int));
+        void inc(int a, void (*cb)(int));
 
-} // extern "C"
+    } // extern "C"
 
 } // namespace ffi
 

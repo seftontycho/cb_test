@@ -2,7 +2,8 @@
 #include <vector>
 #include "./libs/cb_test.hpp"
 
-int main() {
+int main()
+{
     std::vector<int> vector = {};
 
     // Capture the lambda function in a function pointer and pass it to ffi::inc
