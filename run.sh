@@ -1,3 +1,7 @@
+echo "---------------- CLEANING PREVIOUS ----------------"
+
+rm ./output/test
+
 echo "---------------- BUILDING ----------------"
 
 python build.py
