@@ -11,7 +11,7 @@ namespace ffi {
 
 extern "C" {
 
-void add(int a, void (*cb)(int));
+void inc(int a, void (*cb)(int));
 
 } // extern "C"
 
