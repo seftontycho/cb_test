@@ -6,6 +6,8 @@ use std::{
     },
 };
 
+use rayon::prelude::*;
+
 pub struct Task<In, Out, State> {
     task: fn(In, &State) -> Out,
     data: In,
@@ -24,34 +26,33 @@ fn process_calls<In: 'static, Out: 'static, State: Sync + Send + 'static>(
     rx_task: Receiver<Task<In, Out, State>>,
     tx_done: SyncSender<()>,
     state: State,
+    channel_size: usize,
 ) {
     let state = Arc::new(Mutex::new(state));
 
-    let mut handles = vec![];
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(channel_size)
+        .build()
+        .unwrap();
 
-    for task in rx_task.iter() {
-        let handle = std::thread::spawn({
+    pool.scope(|s| {
+        rx_task.into_iter().par_bridge().for_each(|task| {
             let state = state.clone();
 
-            move || {
+            s.spawn(move |_| {
                 execute_task(task, state);
-            }
-        });
-
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
+            });
+        })
+    });
 
     tx_done.send(()).unwrap();
 }
 
 fn execute_task<In, Out, State>(task: Task<In, Out, State>, state: Arc<Mutex<State>>) {
     let state = state.lock().unwrap();
+    let task_result = (task.task)(task.data, &state);
 
-    (task.cb)(task.cb_data, (task.task)(task.data, &state));
+    (task.cb)(task.cb_data, task_result);
 }
 
 #[no_mangle]
@@ -74,7 +75,7 @@ pub extern "C" fn init(channel_size: c_int) -> *mut Sender {
     let state = 100;
 
     std::thread::spawn(move || {
-        process_calls(rx_task, tx_done, state);
+        process_calls(rx_task, tx_done, state, channel_size as usize);
     });
 
     Box::into_raw(Box::new(Sender {

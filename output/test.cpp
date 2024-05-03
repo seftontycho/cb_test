@@ -14,6 +14,9 @@ void cb(void *user_data, int value)
     cb_data &data = *reinterpret_cast<cb_data *>(user_data);
     auto guard = std::lock_guard<std::mutex>(data.mut);
     data.ints.push_back(value);
+
+    std::cout << "Callback called with " << value << std::endl;
+    std::cout << std::flush;
 }
 
 int main()
