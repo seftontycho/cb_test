@@ -7,15 +7,19 @@
 #include <ostream>
 #include <new>
 
-namespace ffi
-{
+namespace ffi {
 
-    extern "C"
-    {
+struct Sender;
 
-        void inc(int a, void (*cb)(int));
+extern "C" {
 
-    } // extern "C"
+void flush(Sender *sender);
+
+Sender *init(int channel_size);
+
+void run(Sender *sender, void *cb_data, void (*cb)(void*, int), int data);
+
+} // extern "C"
 
 } // namespace ffi
 

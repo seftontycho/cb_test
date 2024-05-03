@@ -32,6 +32,7 @@ shutil.copy(
 # Compile test.cpp (assuming g++ is available)
 cpp_build_command = [
     "g++",
+    "-std=c++17",
     "test.cpp",
     "-L./libs",
     "-lcb_test",
