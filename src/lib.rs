@@ -35,14 +35,12 @@ fn process_calls<In: 'static, Out: 'static, State: Sync + Send + 'static>(
         .build()
         .unwrap();
 
-    pool.scope(|s| {
+    pool.scope(|_| {
         rx_task.into_iter().par_bridge().for_each(|task| {
             let state = state.clone();
 
-            s.spawn(move |_| {
-                execute_task(task, state);
-            });
-        })
+            execute_task(task, state);
+        });
     });
 
     tx_done.send(()).unwrap();
@@ -51,16 +49,14 @@ fn process_calls<In: 'static, Out: 'static, State: Sync + Send + 'static>(
 fn execute_task<In, Out, State>(task: Task<In, Out, State>, state: Arc<Mutex<State>>) {
     let state = state.lock().unwrap();
     let task_result = (task.task)(task.data, &state);
+    drop(state);
 
     (task.cb)(task.cb_data, task_result);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn flush(sender: *mut Sender) {
-    let sender = Box::from_raw(sender);
-
-    let tx = sender.tx;
-    let rx = sender.rx;
+    let Sender { rx, tx } = *Box::from_raw(sender);
 
     drop(tx);
 
