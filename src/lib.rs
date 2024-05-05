@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_int, c_void},
+    ops::Mul,
     sync::{
         mpsc::{Receiver, SyncSender},
         Arc, Mutex,
@@ -9,7 +10,7 @@ use std::{
 use rayon::prelude::*;
 
 pub struct Task<In, Out, State> {
-    task: fn(In, &State) -> Out,
+    task: fn(In, Arc<Mutex<State>>) -> Out,
     data: In,
     cb_data: *mut c_void,
     cb: extern "C" fn(*mut c_void, Out) -> (),
@@ -47,9 +48,7 @@ fn process_calls<In: 'static, Out: 'static, State: Sync + Send + 'static>(
 }
 
 fn execute_task<In, Out, State>(task: Task<In, Out, State>, state: Arc<Mutex<State>>) {
-    let state = state.lock().unwrap();
-    let task_result = (task.task)(task.data, &state);
-    drop(state);
+    let task_result = (task.task)(task.data, state);
 
     (task.cb)(task.cb_data, task_result);
 }
@@ -102,8 +101,16 @@ pub unsafe extern "C" fn run(
     Box::into_raw(sender);
 }
 
-fn multiply_by(data: i32, state: &i32) -> i32 {
+fn multiply_by<State>(data: i32, state: Arc<Mutex<State>>) -> i32
+where
+    State: Mul<i32, Output = i32> + Copy,
+{
+    let state = state.lock().unwrap();
+    let output = *state * data;
+
+    drop(state);
+
     std::thread::sleep(std::time::Duration::from_secs(1));
 
-    data * state
+    output
 }
