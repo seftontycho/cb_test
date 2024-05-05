@@ -10,7 +10,7 @@ struct cb_data
     std::mutex mut;
 };
 // The callback function, this will be called after the task has been completed.
-// The first arg will be prefilled with the user_data provided to ffi::run.
+// The first arg will be the user_data provided to the task.
 // The second arg will be result of the task.
 void cb(void *user_data, int value)
 {
@@ -43,6 +43,7 @@ int main()
     // Flush the queue, this will block until all tasks have been completed.
     // It also ensures that the callback has been called for all tasks.
     // It also drops the state, so it is not safe to use it after this point.
+    // If this is not called the task scheduler thread will be left running (not good).
     ffi:flush(state);
 
     for (int i = 0; i < cb_data.ints.size(); i++)
