@@ -53,6 +53,8 @@ fn execute_task<In, Out, State>(task: Task<In, Out, State>, state: Arc<Mutex<Sta
     (task.cb)(task.cb_data, task_result);
 }
 
+/// Will block until all processing has finished.
+/// Drops the sender, trying to use the state after this is a use-after-free.
 #[no_mangle]
 pub unsafe extern "C" fn flush(sender: *mut Sender) {
     let Sender { rx, tx } = *Box::from_raw(sender);
@@ -62,6 +64,7 @@ pub unsafe extern "C" fn flush(sender: *mut Sender) {
     rx.recv().unwrap();
 }
 
+// This is how c++ will create the state.
 #[no_mangle]
 pub extern "C" fn init(channel_size: c_int) -> *mut Sender {
     let (tx_task, rx_task) = std::sync::mpsc::sync_channel(channel_size as usize);
@@ -79,6 +82,9 @@ pub extern "C" fn init(channel_size: c_int) -> *mut Sender {
     }))
 }
 
+/// This is how c++ will queue tasks.
+/// Will block if queue/buffer is full.
+/// `data` can be assumed to have been copied by the time this fn returns.
 #[no_mangle]
 pub unsafe extern "C" fn run(
     sender: *mut Sender,
@@ -92,7 +98,7 @@ pub unsafe extern "C" fn run(
         .tx
         .send(Task {
             task: multiply_by,
-            data,
+            data: data.clone(),
             cb_data,
             cb,
         })
@@ -101,6 +107,7 @@ pub unsafe extern "C" fn run(
     Box::into_raw(sender);
 }
 
+/// An example task
 fn multiply_by<State>(data: i32, state: Arc<Mutex<State>>) -> i32
 where
     State: Mul<i32, Output = i32> + Copy,
