@@ -112,12 +112,18 @@ fn multiply_by<State>(data: i32, state: Arc<Mutex<State>>) -> i32
 where
     State: Mul<i32, Output = i32> + Copy,
 {
+    // Simulates preprocessing time
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    
     let state = state.lock().unwrap();
     let output = *state * data;
 
+    // Simulates time to run actual model
+    std::thread::sleep(std::time::Duration::from_millis(1));
+
     drop(state);
 
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    
 
     output
 }
